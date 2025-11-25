@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PolygonApi.Data;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,7 +113,20 @@ builder.Services.AddDbContext<PolygonDbContext>(options =>
     if (isPostgres)
     {
         // PostgreSQL (for Railway/Render)
-        options.UseNpgsql(connectionString);
+        // Validate connection string before using it
+        try
+        {
+            // Test if connection string is valid by creating a connection string builder
+            var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+            Console.WriteLine($"[DB] PostgreSQL connection string validated. Host={builder.Host}, Database={builder.Database}, Username={builder.Username}");
+            options.UseNpgsql(connectionString);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DB] ERROR: Invalid PostgreSQL connection string: {ex.Message}");
+            Console.WriteLine($"[DB] Connection string: {connectionString.Substring(0, Math.Min(50, connectionString.Length))}...");
+            throw; // Re-throw to fail fast
+        }
     }
     else
     {
