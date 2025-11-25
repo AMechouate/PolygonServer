@@ -11,20 +11,21 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Add Entity Framework - Support for both PostgreSQL (Railway) and MySQL/MariaDB
-var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
-    ?? Environment.GetEnvironmentVariable("POSTGRES_URL")
-    ?? Environment.GetEnvironmentVariable("POSTGRES_PRIVATE_URL")
-    ?? "Server=/tmp/mysql.sock;Database=PolygonDb;User=adammechouate;Password=naima;Protocol=Unix;";
+// Check environment variables first (Railway/Render set these automatically)
+var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") 
+         ?? Environment.GetEnvironmentVariable("POSTGRES_URL")
+         ?? Environment.GetEnvironmentVariable("POSTGRES_PRIVATE_URL")
+         ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Determine database type and normalize connection string
-var isPostgres = rawConnectionString.Contains("postgres://", StringComparison.OrdinalIgnoreCase) ||
+var rawConnectionString = dbUrl ?? "Server=/tmp/mysql.sock;Database=PolygonDb;User=adammechouate;Password=naima;Protocol=Unix;";
+
+// Determine database type - PostgreSQL if connection string contains postgres or if DATABASE_URL is set
+var isPostgres = !string.IsNullOrEmpty(dbUrl) && (
+                 rawConnectionString.Contains("postgres://", StringComparison.OrdinalIgnoreCase) ||
                  rawConnectionString.Contains("postgresql://", StringComparison.OrdinalIgnoreCase) ||
                  rawConnectionString.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase) ||
                  rawConnectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase) ||
-                 Environment.GetEnvironmentVariable("DATABASE_URL") != null ||
-                 Environment.GetEnvironmentVariable("POSTGRES_URL") != null ||
-                 Environment.GetEnvironmentVariable("POSTGRES_PRIVATE_URL") != null;
+                 rawConnectionString.StartsWith("Host=", StringComparison.OrdinalIgnoreCase));
 
 string connectionString = rawConnectionString;
 
@@ -113,24 +114,28 @@ builder.Services.AddDbContext<PolygonDbContext>(options =>
     if (isPostgres)
     {
         // PostgreSQL (for Railway/Render)
+        Console.WriteLine($"[DB] Using PostgreSQL. Connection string length: {connectionString.Length}");
+        Console.WriteLine($"[DB] Connection string preview: {connectionString.Substring(0, Math.Min(80, connectionString.Length))}...");
+        
         // Validate connection string before using it
         try
         {
             // Test if connection string is valid by creating a connection string builder
-            var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
-            Console.WriteLine($"[DB] PostgreSQL connection string validated. Host={builder.Host}, Database={builder.Database}, Username={builder.Username}");
+            var csBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+            Console.WriteLine($"[DB] PostgreSQL connection string validated. Host={csBuilder.Host}, Port={csBuilder.Port}, Database={csBuilder.Database}, Username={csBuilder.Username}");
             options.UseNpgsql(connectionString);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[DB] ERROR: Invalid PostgreSQL connection string: {ex.Message}");
-            Console.WriteLine($"[DB] Connection string: {connectionString.Substring(0, Math.Min(50, connectionString.Length))}...");
+            Console.WriteLine($"[DB] Full connection string: {connectionString}");
             throw; // Re-throw to fail fast
         }
     }
     else
     {
         // MySQL/MariaDB (for local development)
+        Console.WriteLine($"[DB] Using MySQL/MariaDB for local development");
         options.UseMySql(connectionString, new MySqlServerVersion(new Version(11, 2, 3)));
     }
 });
