@@ -19,6 +19,10 @@ var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
 
 var rawConnectionString = dbUrl ?? "Server=/tmp/mysql.sock;Database=PolygonDb;User=adammechouate;Password=naima;Protocol=Unix;";
 
+// Log what we found
+Console.WriteLine($"[DB] DATABASE_URL env var: {(Environment.GetEnvironmentVariable("DATABASE_URL") != null ? "SET" : "NOT SET")}");
+Console.WriteLine($"[DB] Raw connection string preview: {(rawConnectionString.Length > 50 ? rawConnectionString.Substring(0, 50) + "..." : rawConnectionString)}");
+
 // Determine database type - PostgreSQL if connection string contains postgres or if DATABASE_URL is set
 var isPostgres = !string.IsNullOrEmpty(dbUrl) && (
                  rawConnectionString.Contains("postgres://", StringComparison.OrdinalIgnoreCase) ||
@@ -26,6 +30,8 @@ var isPostgres = !string.IsNullOrEmpty(dbUrl) && (
                  rawConnectionString.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase) ||
                  rawConnectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase) ||
                  rawConnectionString.StartsWith("Host=", StringComparison.OrdinalIgnoreCase));
+
+Console.WriteLine($"[DB] Database type detected: {(isPostgres ? "PostgreSQL" : "MySQL/MariaDB")}");
 
 string connectionString = rawConnectionString;
 
