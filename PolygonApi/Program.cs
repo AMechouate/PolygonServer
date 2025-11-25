@@ -9,12 +9,27 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add Entity Framework with MariaDB/MySQL
+// Add Entity Framework - Support for both PostgreSQL (Railway) and MySQL/MariaDB
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? Environment.GetEnvironmentVariable("POSTGRES_URL")
     ?? "Server=/tmp/mysql.sock;Database=PolygonDb;User=adammechouate;Password=naima;Protocol=Unix;";
+
 builder.Services.AddDbContext<PolygonDbContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(11, 2, 3))));
+{
+    // Check if connection string is PostgreSQL (Railway) or MySQL
+    if (connectionString.Contains("postgres://") || connectionString.Contains("PostgreSQL") || 
+        connectionString.Contains("postgresql://") || Environment.GetEnvironmentVariable("POSTGRES_URL") != null)
+    {
+        // PostgreSQL (for Railway)
+        options.UseNpgsql(connectionString);
+    }
+    else
+    {
+        // MySQL/MariaDB (for local development)
+        options.UseMySql(connectionString, new MySqlServerVersion(new Version(11, 2, 3)));
+    }
+});
 
 // Add CORS
 builder.Services.AddCors(options =>
