@@ -13,15 +13,24 @@ builder.Services.AddSwaggerGen();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? Environment.GetEnvironmentVariable("POSTGRES_URL")
+    ?? Environment.GetEnvironmentVariable("POSTGRES_PRIVATE_URL")
     ?? "Server=/tmp/mysql.sock;Database=PolygonDb;User=adammechouate;Password=naima;Protocol=Unix;";
+
+// Determine database type based on connection string
+var isPostgres = connectionString.Contains("postgres://", StringComparison.OrdinalIgnoreCase) ||
+                 connectionString.Contains("postgresql://", StringComparison.OrdinalIgnoreCase) ||
+                 connectionString.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase) ||
+                 connectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase) ||
+                 Environment.GetEnvironmentVariable("DATABASE_URL") != null ||
+                 Environment.GetEnvironmentVariable("POSTGRES_URL") != null ||
+                 Environment.GetEnvironmentVariable("POSTGRES_PRIVATE_URL") != null;
 
 builder.Services.AddDbContext<PolygonDbContext>(options =>
 {
-    // Check if connection string is PostgreSQL (Railway) or MySQL
-    if (connectionString.Contains("postgres://") || connectionString.Contains("PostgreSQL") || 
-        connectionString.Contains("postgresql://") || Environment.GetEnvironmentVariable("POSTGRES_URL") != null)
+    if (isPostgres)
     {
-        // PostgreSQL (for Railway)
+        // PostgreSQL (for Railway/Render)
+        // Railway provides DATABASE_URL in format: postgresql://user:pass@host:port/db
         options.UseNpgsql(connectionString);
     }
     else
