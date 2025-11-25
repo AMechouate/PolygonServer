@@ -33,21 +33,77 @@ if (isPostgres && rawConnectionString.StartsWith("postgresql://", StringComparis
     try
     {
         // Parse postgresql://user:pass@host:port/db format
+        // Example: postgresql://user:pass@host:5432/db
         var uri = new Uri(rawConnectionString);
-        var userInfo = uri.UserInfo.Split(':');
-        var user = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
-        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+        
+        // Extract user and password from userinfo
+        var userInfo = uri.UserInfo;
+        string username = "";
+        string password = "";
+        
+        if (!string.IsNullOrEmpty(userInfo))
+        {
+            var colonIndex = userInfo.IndexOf(':');
+            if (colonIndex > 0)
+            {
+                username = Uri.UnescapeDataString(userInfo.Substring(0, colonIndex));
+                password = Uri.UnescapeDataString(userInfo.Substring(colonIndex + 1));
+            }
+            else
+            {
+                username = Uri.UnescapeDataString(userInfo);
+            }
+        }
+        
         var host = uri.Host;
         var dbPort = uri.Port > 0 ? uri.Port : 5432;
-        var database = uri.AbsolutePath.TrimStart('/');
+        var database = uri.AbsolutePath.TrimStart('/').Split('?')[0]; // Remove query string if present
         
-        // Build Npgsql connection string
-        connectionString = $"Host={host};Port={dbPort};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        // Build Npgsql connection string with proper parameter names
+        // Npgsql uses: Host, Port, Database, Username (not User!), Password
+        connectionString = $"Host={host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        
+        // Log for debugging
+        Console.WriteLine($"[DB] PostgreSQL detected. Host={host}, Port={dbPort}, Database={database}, Username={username}");
     }
-    catch
+    catch (Exception ex)
     {
-        // If parsing fails, use original string
-        connectionString = rawConnectionString;
+        // If parsing fails, log and try to build manually
+        Console.WriteLine($"[DB] Error parsing connection string: {ex.Message}");
+        Console.WriteLine($"[DB] Raw connection string: {rawConnectionString}");
+        
+        // Try to extract manually as fallback
+        try
+        {
+            // Manual extraction as last resort
+            var match = System.Text.RegularExpressions.Regex.Match(
+                rawConnectionString, 
+                @"postgresql://([^:]+):([^@]+)@([^/]+)/([^?]+)"
+            );
+            
+            if (match.Success)
+            {
+                var username = Uri.UnescapeDataString(match.Groups[1].Value);
+                var password = Uri.UnescapeDataString(match.Groups[2].Value);
+                var hostPort = match.Groups[3].Value;
+                var database = match.Groups[4].Value;
+                
+                var hostParts = hostPort.Split(':');
+                var host = hostParts[0];
+                var port = hostParts.Length > 1 ? int.Parse(hostParts[1]) : 5432;
+                
+                connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+                Console.WriteLine($"[DB] Manual extraction successful. Host={host}, Port={port}, Database={database}");
+            }
+            else
+            {
+                connectionString = rawConnectionString;
+            }
+        }
+        catch
+        {
+            connectionString = rawConnectionString;
+        }
     }
 }
 
