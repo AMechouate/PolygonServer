@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: polygon-api
+    env: dotnet
+    buildCommand: dotnet publish -c Release -o ./publish
+    startCommand: dotnet ./publish/PolygonApi.dll
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:$PORT
+    healthCheckPath: /swagger
+
+databases:
+  - name: polygon-db
+    databaseName: PolygonDb
+    user: polygon_user
+

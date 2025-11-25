@@ -11,6 +11,7 @@ builder.Services.AddSwaggerGen();
 
 // Add Entity Framework with MariaDB/MySQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? "Server=/tmp/mysql.sock;Database=PolygonDb;User=adammechouate;Password=naima;Protocol=Unix;";
 builder.Services.AddDbContext<PolygonDbContext>(options =>
     options.UseMySql(connectionString, new MySqlServerVersion(new Version(11, 2, 3))));
@@ -57,4 +58,6 @@ using (var scope = app.Services.CreateScope())
     context.Database.EnsureCreated();
 }
 
-app.Run();
+// Get port from environment variable (for cloud hosting)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5104";
+app.Run($"http://0.0.0.0:{port}");
