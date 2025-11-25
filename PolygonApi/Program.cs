@@ -38,11 +38,11 @@ if (isPostgres && rawConnectionString.StartsWith("postgresql://", StringComparis
         var user = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
         var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
         var host = uri.Host;
-        var port = uri.Port > 0 ? uri.Port : 5432;
+        var dbPort = uri.Port > 0 ? uri.Port : 5432;
         var database = uri.AbsolutePath.TrimStart('/');
         
         // Build Npgsql connection string
-        connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        connectionString = $"Host={host};Port={dbPort};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
     }
     catch
     {
