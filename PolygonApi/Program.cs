@@ -89,11 +89,11 @@ if (isPostgres && rawConnectionString.StartsWith("postgresql://", StringComparis
                 var database = match.Groups[4].Value;
                 
                 var hostParts = hostPort.Split(':');
-                var host = hostParts[0];
-                var port = hostParts.Length > 1 ? int.Parse(hostParts[1]) : 5432;
+                var fallbackHost = hostParts[0];
+                var fallbackPort = hostParts.Length > 1 ? int.Parse(hostParts[1]) : 5432;
                 
-                connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
-                Console.WriteLine($"[DB] Manual extraction successful. Host={host}, Port={port}, Database={database}");
+                connectionString = $"Host={fallbackHost};Port={fallbackPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+                Console.WriteLine($"[DB] Manual extraction successful. Host={fallbackHost}, Port={fallbackPort}, Database={database}");
             }
             else
             {
